@@ -1303,6 +1303,20 @@
                 <button type="button" class="btn btn-primary btn-sm" onclick="quickPrintAsesmenDoc('daftar_hadir_pengawas')">📋 Cetak Daftar Hadir Pengawas</button>
               </div>
             </div>
+            <div style="margin-bottom:14px;padding:12px 14px;background:#f8fcfa;border:1.5px solid var(--border-soft);border-radius:14px;">
+              <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                <div>
+                  <div style="font-weight:800;color:var(--emerald-900);font-size:0.9rem;">👤 Jadwal Mengawas Per Pengawas Ujian</div>
+                  <div style="font-size:0.74rem;color:var(--text-muted);">Pilih nama/kode pengawas untuk melihat seluruh jadwal mengawasnya (otomatis mengikuti akun pengawas bila login non-admin)</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <select id="pengawasIndividuSelect" class="form-control" style="width:265px;padding:6px 10px;font-weight:700;" onchange="renderJadwalPengawasIndividu()"></select>
+                  <button type="button" class="btn btn-sm" onclick="printJadwalPengawasIndividu()">🖨️ Cetak Jadwal Pengawas Ini</button>
+                </div>
+              </div>
+              <div id="jadwalPengawasIndividuSummary" style="margin-bottom:10px;"></div>
+              <div class="table-wrap" id="jadwalPengawasIndividuWrap"></div>
+            </div>
             <div class="table-wrap" id="asesmenPengawasGabunganWrap" style="margin-bottom:14px;"></div>
             <div style="margin-bottom:16px;padding:12px;background:var(--bg-mint);border:1px solid var(--border-soft);border-radius:12px;">
               <div style="font-weight:800;font-size:0.8rem;color:var(--emerald-900);margin-bottom:8px;">KETERANGAN KODE GURU PENGAWAS RUANG:</div>
@@ -2224,6 +2238,7 @@ function initApp() {
   if (appEl) appEl.style.setProperty('display', 'flex', 'important');
   if (chipEl) chipEl.textContent = `👤 ${user.nama} (${user.role})`;
 
+  if (typeof renderJadwalPengawasIndividu === 'function') safeCall(renderJadwalPengawasIndividu);
   const isAdmin = (user.role === 'Kepala Madrasah' || user.role === 'Admin / Waka Kurikulum');
   document.querySelectorAll('.admin-only').forEach(el => { el.style.display = isAdmin ? '' : 'none'; });
   safeCall(renderAll);
@@ -5529,6 +5544,7 @@ window.exportJadwalPengawasExcel = function() {
 function renderAsesmenPengawas() {
   ensureAsesmenState();
   renderAsesmenPengawasGabunganMatrix();
+  renderJadwalPengawasIndividu();
   const hari = document.getElementById('pengawasHariFilter')?.value || 'Senin';
   const rows = appState.asesmen2026.pengawasRuang.filter(x => x.hari === hari);
   const eligible = appState.gtk.filter(g => g.kode !== 'RM' && g.kategori !== 'Tenaga Kependidikan');
@@ -5557,7 +5573,209 @@ window.updatePengawasCell = function(hari, kelas, sesiKey, newGtkId) {
     item[sesiKey] = newGtkId;
     saveState();
     renderAsesmenPengawasGabunganMatrix();
+    renderJadwalPengawasIndividu();
   }
+};
+
+function populatePengawasIndividuSelect() {
+  const sel = document.getElementById('pengawasIndividuSelect');
+  if (!sel) return;
+  const eligible = (appState.gtk || []).filter(g => g.kode !== 'RM' && g.kategori !== 'Tenaga Kependidikan');
+  const u = window.currentUser || currentUser;
+  const isAdmin = !!(u && (u.role === 'Kepala Madrasah' || u.role === 'Admin / Waka Kurikulum'));
+  const cur = sel.value;
+
+  sel.innerHTML = eligible.map(g => {
+    const isSelf = !!(u && (u.gtkId === g.id || String(u.kode || '').toUpperCase() === String(g.kode || '').toUpperCase()));
+    const disabled = (!isAdmin && u && !isSelf) ? 'disabled' : '';
+    return `<option value="${g.id}" ${disabled}>[${g.kode}] ${g.nama}</option>`;
+  }).join('');
+
+  if (!isAdmin && u) {
+    const selfMatch = eligible.find(g => g.id === u.gtkId || String(g.kode || '').toUpperCase() === String(u.kode || '').toUpperCase());
+    if (selfMatch) {
+      sel.value = selfMatch.id;
+      sel.disabled = true;
+      return;
+    }
+  }
+  sel.disabled = false;
+  if (cur && eligible.some(g => g.id === cur)) {
+    sel.value = cur;
+  } else if (eligible.length > 0) {
+    sel.value = eligible[0].id;
+  }
+}
+
+window.renderJadwalPengawasIndividu = function() {
+  ensureAsesmenState();
+  populatePengawasIndividuSelect();
+  const sel = document.getElementById('pengawasIndividuSelect');
+  const sumEl = document.getElementById('jadwalPengawasIndividuSummary');
+  const wrap = document.getElementById('jadwalPengawasIndividuWrap');
+  if (!sel || !wrap) return;
+
+  const targetGtkId = sel.value;
+  const g = getGtkById(targetGtkId);
+  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+  const dayDateMap = {
+    Senin: 'Senin, 30 Nop 2026',
+    Selasa: 'Selasa, 01 Des 2026',
+    Rabu: 'Rabu, 02 Des 2026',
+    Kamis: 'Kamis, 03 Des 2026',
+    Jumat: 'Jumat, 04 Des 2026'
+  };
+  const sesiMeta = {
+    sesi1: { label: 'Sesi 1', pukul: '07.30 - 08.30' },
+    sesi2: { label: 'Sesi 2', pukul: '08.30 - 09.30' },
+    sesi3: { label: 'Sesi 3', pukul: '10.00 - 11.00' }
+  };
+
+  const duties = [];
+  days.forEach(hari => {
+    const sesiList = hari === 'Jumat' ? ['sesi1', 'sesi2'] : ['sesi1', 'sesi2', 'sesi3'];
+    sesiList.forEach(sKey => {
+      const sInfo = getAsesmenSessionInfo(hari, sKey);
+      if (!sInfo || !sInfo.hasMapel) return;
+      const matches = (appState.asesmen2026.pengawasRuang || []).filter(
+        r => r.hari === hari && r[sKey] === targetGtkId && sInfo.activeKelas.has(r.kelas)
+      );
+      matches.forEach(r => {
+        duties.push({
+          hari,
+          hariTanggal: dayDateMap[hari] || hari,
+          sesi: sesiMeta[sKey].label,
+          pukul: sesiMeta[sKey].pukul,
+          mapel: sInfo.labelHtml.replace(/<[^>]+>/g, ' '),
+          ruang: r.ruang,
+          kelas: r.kelas
+        });
+      });
+    });
+  });
+
+  if (sumEl) {
+    sumEl.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#fff;border:1px solid var(--border-soft);padding:8px 12px;border-radius:10px;font-size:0.78rem;">
+        <span class="badge badge-gold">Pengawas: [${g.kode}] ${g.nama}</span>
+        <span class="badge badge-ok">Total Tugas Mengawas: ${duties.length} Sesi</span>
+        <span style="color:var(--text-muted);">NIP: ${formatCleanNip(g) || '-'}</span>
+      </div>
+    `;
+  }
+
+  if (duties.length === 0) {
+    wrap.innerHTML = `<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:0.8rem;background:#fff;">Belum ada jadwal tugas mengawas ruang untuk <strong>${g.nama}</strong>.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table style="background:#fff;">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Hari / Tanggal</th>
+          <th>Sesi</th>
+          <th>Pukul (WIB)</th>
+          <th>Ruang Ujian</th>
+          <th>Kelas</th>
+          <th>Mata Pelajaran Diujikan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${duties.map((d, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td><strong>${d.hariTanggal}</strong></td>
+            <td><span class="badge badge-info">${d.sesi}</span></td>
+            <td>${d.pukul}</td>
+            <td><strong>${d.ruang}</strong></td>
+            <td><strong>Kelas ${d.kelas}</strong></td>
+            <td>${d.mapel}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+};
+
+window.printJadwalPengawasIndividu = function() {
+  ensureAsesmenState();
+  const sel = document.getElementById('pengawasIndividuSelect');
+  const targetGtkId = sel?.value || '';
+  const g = getGtkById(targetGtkId);
+  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+  const dayDateMap = {
+    Senin: 'Senin, 30 Nop 2026',
+    Selasa: 'Selasa, 01 Des 2026',
+    Rabu: 'Rabu, 02 Des 2026',
+    Kamis: 'Kamis, 03 Des 2026',
+    Jumat: 'Jumat, 04 Des 2026'
+  };
+  const sesiMeta = {
+    sesi1: { label: 'Sesi 1', pukul: '07.30 - 08.30' },
+    sesi2: { label: 'Sesi 2', pukul: '08.30 - 09.30' },
+    sesi3: { label: 'Sesi 3', pukul: '10.00 - 11.00' }
+  };
+  const duties = [];
+  days.forEach(hari => {
+    const sesiList = hari === 'Jumat' ? ['sesi1', 'sesi2'] : ['sesi1', 'sesi2', 'sesi3'];
+    sesiList.forEach(sKey => {
+      const sInfo = getAsesmenSessionInfo(hari, sKey);
+      if (!sInfo || !sInfo.hasMapel) return;
+      (appState.asesmen2026.pengawasRuang || [])
+        .filter(r => r.hari === hari && r[sKey] === targetGtkId && sInfo.activeKelas.has(r.kelas))
+        .forEach(r => {
+          duties.push({
+            hariTanggal: dayDateMap[hari] || hari,
+            sesi: sesiMeta[sKey].label,
+            pukul: sesiMeta[sKey].pukul,
+            ruang: r.ruang,
+            kelas: r.kelas,
+            mapel: sInfo.labelHtml.replace(/<[^>]+>/g, ' ')
+          });
+        });
+    });
+  });
+
+  const m = appState.meta;
+  const cfg = appState.asesmen2026.config;
+  const kaObj = getKepalaMadrasahInfo();
+  const rowsHtml = duties.length > 0
+    ? duties.map((d, i) => `<tr><td style="text-align:center;">${i + 1}</td><td>${d.hariTanggal}</td><td style="text-align:center;">${d.sesi}</td><td style="text-align:center;">${d.pukul}</td><td style="text-align:center;"><strong>${d.ruang}</strong></td><td style="text-align:center;">${d.kelas}</td><td>${d.mapel}</td></tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;">Tidak ada jadwal mengawas tercatat.</td></tr>`;
+
+  switchTab('tab-asesmen');
+  switchAsesmenSub('asub-cetak-adm');
+  const area = document.getElementById('asesmenPrintArea');
+  if (area) {
+    area.innerHTML = `
+      <div style="text-align:center;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px;">
+        <div style="font-size:11pt;font-weight:bold;">KEMENTERIAN AGAMA REPUBLIK INDONESIA</div>
+        <div style="font-size:10.5pt;font-weight:bold;">KANTOR KEMENTERIAN AGAMA KABUPATEN BATANG HARI</div>
+        <div style="font-size:12.5pt;font-weight:bold;">${m.namaMadrasah}</div>
+        <div style="font-size:8.5pt;">${m.alamat}</div>
+      </div>
+      <div style="text-align:center;margin:10px 0 12px;">
+        <div style="font-size:12pt;font-weight:bold;text-decoration:underline;">JADWAL TUGAS PENGAWAS RUANG ASESMEN</div>
+        <div style="font-size:10pt;font-weight:bold;">${cfg.namaKegiatan} • TP ${m.tahunPelajaran}</div>
+      </div>
+      <div style="font-size:9.5pt;margin-bottom:10px;">
+        <strong>Nama Pengawas:</strong> [${g.kode}] ${g.nama} &nbsp;|&nbsp; <strong>NIP:</strong> ${formatCleanNip(g) || '-'} &nbsp;|&nbsp; <strong>Jumlah Sesi:</strong> ${duties.length} Sesi
+      </div>
+      <table class="print-table">
+        <thead><tr><th style="width:34px;">No</th><th>Hari / Tanggal</th><th>Sesi</th><th>Pukul</th><th>Ruang</th><th>Kelas</th><th>Mata Pelajaran</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <table style="width:100%;border-collapse:collapse;border:none;margin-top:16px;">
+        <tr>
+          <td style="width:55%;border:none !important;background:transparent !important;font-size:9.5pt;">&nbsp;</td>
+          <td style="width:45%;border:none !important;background:transparent !important;font-size:9.5pt;line-height:1.4;">Muara Bulian, ${cfg.tanggalSKPanitia || cfg.tanggalSelesai}<br>Kepala Madrasah,<br><br><br><br><strong><u>${kaObj.nama}</u></strong><br>NIP. ${kaObj.nip || '-'}</td>
+        </tr>
+      </table>
+    `;
+  }
+  setTimeout(() => { window.print(); }, 120);
 };
 
 window.onNilaiPeranModeChange = function() {
