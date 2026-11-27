@@ -8326,11 +8326,9 @@ function applyRolePermissions() {
     el.style.display = admin ? '' : 'none';
   });
 
-  // Sembunyikan tombol Pengaturan Google Sheets bagi non-admin
   const cloudBtn = document.querySelector('button[onclick*="modalCloudConfig"]');
   if (cloudBtn) cloudBtn.style.display = admin ? '' : 'none';
 
-  // Kunci input/select identitas SK, Asesmen, Kurikulum KBC, Wali Kelas, Pengawas, dan Pengaturan Jam bagi non-admin
   const lockSelectors = [
     '#asmNamaKegiatan', '#asmNomorSK', '#asmTglMulai', '#asmTglSelesai',
     '#skNomorInput', '#skTanggalInput',
@@ -8347,7 +8345,6 @@ function applyRolePermissions() {
     });
   });
 
-  // Sembunyikan tombol aksi pengubah struktur jadwal & pengawas bagi non-admin
   const adminActionBtnSelectors = [
     'button[onclick*="generateAntiClashMaster"]',
     'button[onclick*="generateRollingPengawas"]',
@@ -8362,7 +8359,6 @@ function applyRolePermissions() {
     });
   });
 
-  // Di Tab 6.5 (Input Nilai): kunci input nilai jika bukan mapel/kelas yang diampu oleh guru ybs
   if (!admin) {
     const kls = document.getElementById('nilaiKelasSel')?.value || '';
     const mapel = document.getElementById('nilaiMapelSel')?.value || '';
@@ -8378,14 +8374,7 @@ function applyRolePermissions() {
   const isPengawasMode = isPengawasExamUser();
   const u = window.currentUser || currentUser;
   document.body.classList.toggle('pengawas-mode', isPengawasMode);
-  const sbEl = document.getElementById('appSidebar');
-  const bdEl = document.getElementById('sidebarBackdrop');
-  if (isPengawasMode) {
-    if (sbEl) sbEl.classList.remove('mobile-open');
-    if (bdEl) bdEl.classList.remove('open');
-  }
 
-  // Atur visibilitas menu & submenu khusus Akun Pengawas Ujian
   const navBar = document.getElementById('mainNavBar');
   if (navBar) {
     navBar.querySelectorAll('.nav-group-label').forEach(lbl => {
@@ -8394,7 +8383,7 @@ function applyRolePermissions() {
     navBar.querySelectorAll('.nav-btn').forEach(btn => {
       if (btn.closest('#pengawasSidebarQuickBtns')) return;
       if (isPengawasMode) {
-        btn.style.display = 'none';
+        btn.style.setProperty('display', 'none', 'important');
       } else {
         btn.style.display = '';
         const lblSpan = btn.querySelector('.nav-label');
@@ -8404,7 +8393,6 @@ function applyRolePermissions() {
       }
     });
 
-    // Menu Sidebar Kiri Khusus Pengawas Ujian (3 Menu Utama + Pintasan Cetak & Keluar)
     let pengawasQuickGroup = document.getElementById('pengawasSidebarQuickBtns');
     if (isPengawasMode) {
       if (!pengawasQuickGroup) {
@@ -8439,58 +8427,45 @@ function applyRolePermissions() {
         navBar.appendChild(pengawasQuickGroup);
       }
       pengawasQuickGroup.style.setProperty('display', 'flex', 'important');
-      if (typeof switchPengawasSidebarSection === 'function') {
-        switchPengawasSidebarSection(window._activePengawasSec || 'jadwal', true);
-      }
     } else if (pengawasQuickGroup) {
-      pengawasQuickGroup.style.display = 'none';
-      ['pengawasSecJadwal', 'pengawasSecRuangSiswa', 'pengawasSecAbsensi'].forEach(sid => {
-        const el = document.getElementById(sid);
-        if (el) el.style.display = '';
-      });
+      pengawasQuickGroup.style.setProperty('display', 'none', 'important');
     }
   }
-
-  document.querySelectorAll('.tab-panel').forEach(panel => {
-    if (isPengawasMode) {
-      panel.classList.toggle('active', panel.id === 'tab-asesmen');
-    }
-  });
 
   const asmSubBar = document.querySelector('#tab-asesmen .subtab-bar');
   if (asmSubBar) {
-    asmSubBar.style.display = isPengawasMode ? 'none' : '';
+    asmSubBar.style.setProperty('display', isPengawasMode ? 'none' : '', isPengawasMode ? 'important' : '');
   }
 
   if (isPengawasMode) {
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.id === 'tab-asesmen');
+    });
     document.querySelectorAll('#tab-asesmen .sub-panel').forEach(sp => {
       const isTargetSub = (sp.id === 'asub-jadwal-pengawas');
-      sp.style.display = isTargetSub ? 'block' : 'none';
+      sp.style.setProperty('display', isTargetSub ? 'block' : 'none', 'important');
       sp.classList.toggle('active', isTargetSub);
     });
 
     const jpSub = document.getElementById('asub-jadwal-pengawas');
     if (jpSub) {
       const cards = jpSub.querySelectorAll(':scope > .card');
-      // Sembunyikan card pertama (Jadwal Pelaksanaan Asesmen umum)
-      if (cards[0]) cards[0].style.display = 'none';
-      // Di card kedua (Jadwal Pengawas), sembunyikan elemen non-pengawas-individu
+      if (cards[0]) cards[0].style.setProperty('display', 'none', 'important');
       if (cards[1]) {
-        const hdrBtns = cards[1].querySelectorAll('.card-header button');
-        hdrBtns.forEach(b => {
-          b.style.display = 'none';
+        cards[1].querySelectorAll('.card-header button').forEach(b => {
+          b.style.setProperty('display', 'none', 'important');
         });
         const gabWrap = document.getElementById('asesmenPengawasGabunganWrap');
-        if (gabWrap) gabWrap.style.display = 'none';
+        if (gabWrap) gabWrap.style.setProperty('display', 'none', 'important');
         const legGrid = document.getElementById('asesmenPengawasLegendGrid');
-        if (legGrid && legGrid.parentElement) legGrid.parentElement.style.display = 'none';
+        if (legGrid && legGrid.parentElement) legGrid.parentElement.style.setProperty('display', 'none', 'important');
         const manualBody = document.getElementById('asesmenPengawasBody');
         if (manualBody) {
           const manualSection = manualBody.closest('div[style*="border-top"]');
-          if (manualSection) manualSection.style.display = 'none';
+          if (manualSection) manualSection.style.setProperty('display', 'none', 'important');
         }
         const fullDhpBtn = document.querySelector('#pengawasAbsensiDirectBox button[onclick*="daftar_hadir_pengawas"]');
-        if (fullDhpBtn) fullDhpBtn.style.display = 'none';
+        if (fullDhpBtn) fullDhpBtn.style.setProperty('display', 'none', 'important');
       }
     }
 
@@ -8501,8 +8476,6 @@ function applyRolePermissions() {
     document.querySelectorAll('#tab-asesmen .sub-panel').forEach(sp => {
       sp.style.display = '';
     });
-    const asmSubBar2 = document.querySelector('#tab-asesmen .subtab-bar');
-    if (asmSubBar2) asmSubBar2.style.display = '';
     const jpSub = document.getElementById('asub-jadwal-pengawas');
     if (jpSub) {
       const cards = jpSub.querySelectorAll(':scope > .card');
@@ -8522,9 +8495,12 @@ function applyRolePermissions() {
         if (fullDhpBtn) fullDhpBtn.style.display = '';
       }
     }
+    ['pengawasSecJadwal', 'pengawasSecRuangSiswa', 'pengawasSecAbsensi'].forEach(sid => {
+      const el = document.getElementById(sid);
+      if (el) el.style.display = '';
+    });
   }
 
-  // Tampilkan indikator Mode Akses di bar atas
   const chipEl = document.getElementById('activeUserChip');
   if (chipEl && u) {
     const modeTag = admin ? 'Akses Penuh' : (isPengawasMode ? 'Jadwal & Absensi Pengawas' : 'Mode Baca & Nilai Sendiri');
