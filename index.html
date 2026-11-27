@@ -235,81 +235,16 @@
     display: none !important;
   }
   @media (max-width: 991px) {
-    body.pengawas-mode {
-      display: flex !important;
-      flex-direction: row !important;
-      align-items: flex-start !important;
-    }
-    body.pengawas-mode #appWorkspace {
-      flex: 1 1 auto !important;
-      min-width: 0 !important;
-      display: flex !important;
-    }
     body.pengawas-mode .app-sidebar {
-      position: sticky !important;
-      top: 0 !important;
-      left: 0 !important;
-      bottom: auto !important;
-      width: 148px !important;
-      min-width: 148px !important;
-      max-width: 148px !important;
-      height: 100vh !important;
-      max-height: 100vh !important;
-      transform: none !important;
-      flex-shrink: 0 !important;
-      border-radius: 0 !important;
-      box-shadow: 4px 0 18px rgba(4, 41, 31, 0.22) !important;
-    }
-    body.pengawas-mode .app-main-col {
-      flex: 1 1 auto !important;
-      min-width: 0 !important;
-      width: auto !important;
-    }
-    body.pengawas-mode .mobile-menu-btn {
-      display: none !important;
-    }
-    body.pengawas-mode .topbar {
-      padding: 8px 10px !important;
-      gap: 6px !important;
-    }
-    body.pengawas-mode .brand-title {
-      font-size: 0.86rem !important;
-    }
-    body.pengawas-mode .brand-sub {
-      font-size: 0.66rem !important;
-    }
-    body.pengawas-mode .container {
-      padding: 10px 8px 36px !important;
-    }
-    body.pengawas-mode .app-sidebar .sidebar-brand {
-      padding: 10px 8px !important;
-      min-height: 48px !important;
-    }
-    body.pengawas-mode .app-sidebar .brand-logo {
-      width: 26px !important;
-      height: 26px !important;
-      border-radius: 7px !important;
-    }
-    body.pengawas-mode .app-sidebar .brand-logo svg {
-      width: 18px !important;
-      height: 18px !important;
-    }
-    body.pengawas-mode .app-sidebar .sidebar-title {
-      font-size: 0.72rem !important;
-    }
-    body.pengawas-mode .app-sidebar .sidebar-sub {
-      font-size: 0.56rem !important;
+      width: 176px !important;
+      max-width: 176px !important;
     }
     body.pengawas-mode .app-sidebar .nav-btn {
-      padding: 8px 7px !important;
-      font-size: 0.72rem !important;
-      gap: 6px !important;
+      padding: 8px 9px !important;
+      font-size: 0.75rem !important;
+      gap: 7px !important;
       white-space: normal !important;
       line-height: 1.2 !important;
-    }
-    body.pengawas-mode .app-sidebar .nav-icon {
-      width: 15px !important;
-      height: 15px !important;
     }
   }
 
@@ -2427,6 +2362,9 @@ function initApp() {
   if (user && user.role === 'Pengawas Ujian') {
     if (typeof switchAsesmenSub === 'function') switchAsesmenSub('asub-jadwal-pengawas');
     if (typeof renderJadwalPengawasIndividu === 'function') safeCall(renderJadwalPengawasIndividu);
+    if (window.innerWidth <= 991 && typeof window.toggleMobileSidebar === 'function') {
+      setTimeout(() => { window.toggleMobileSidebar(true); }, 120);
+    }
   }
   if (typeof applyRolePermissions === 'function') safeCall(applyRolePermissions);
 }
