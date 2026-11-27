@@ -2372,12 +2372,12 @@ function initApp() {
     if (typeof renderJadwalPengawasIndividu === 'function') safeCall(renderJadwalPengawasIndividu);
     if (typeof switchPengawasSidebarSection === 'function') switchPengawasSidebarSection('jadwal', true);
     if (window.innerWidth <= 991 && typeof window.toggleMobileSidebar === 'function') {
-      setTimeout(() => { window.toggleMobileSidebar(true); }, 120);
+      toggleMobileSidebar(false);
     }
   }
   if (typeof applyRolePermissions === 'function') safeCall(applyRolePermissions);
-  if (user && user.role === 'Pengawas Ujian' && typeof switchPengawasSidebarSection === 'function') {
-    switchPengawasSidebarSection(window._activePengawasSec || 'jadwal', true);
+  if (user && user.role === 'Pengawas Ujian' && typeof syncPengawasSectionVisibility === 'function') {
+    syncPengawasSectionVisibility();
   }
 }
 window.loginSuccess = loginSuccess;
@@ -6025,6 +6025,8 @@ window.renderJadwalPengawasIndividu = function() {
       `;
     }
   }
+
+  if (typeof syncPengawasSectionVisibility === 'function') syncPengawasSectionVisibility();
 };
 
 window.printJadwalPengawasIndividu = function() {
@@ -8325,6 +8327,20 @@ window.switchPengawasSidebarSection = function(secKey, keepSidebarOpen) {
   }
 };
 
+function syncPengawasSectionVisibility() {
+  if (!isPengawasExamUser()) return;
+  const activeSec = window._activePengawasSec || 'jadwal';
+  const secJadwal = document.getElementById('pengawasSecJadwal');
+  const secRuang = document.getElementById('pengawasSecRuangSiswa');
+  const secAbsen = document.getElementById('pengawasSecAbsensi');
+  if (secJadwal) secJadwal.style.setProperty('display', activeSec === 'jadwal' ? 'block' : 'none', 'important');
+  if (secRuang) secRuang.style.setProperty('display', activeSec === 'ruang_siswa' ? 'block' : 'none', 'important');
+  if (secAbsen) secAbsen.style.setProperty('display', activeSec === 'absensi' ? 'block' : 'none', 'important');
+  document.querySelectorAll('.pengawas-menu-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-psec') === activeSec);
+  });
+}
+
 function applyRolePermissions() {
   const admin = isAdminUser();
   document.querySelectorAll('.admin-only').forEach(el => {
@@ -8504,6 +8520,29 @@ function applyRolePermissions() {
       const el = document.getElementById(sid);
       if (el) el.style.display = '';
     });
+  }
+
+  if (isPengawasMode && u && u.gtkId) {
+    const pSel = document.getElementById('pengawasIndividuSelect');
+    if (pSel) {
+      if (!Array.from(pSel.options).some(o => o.value === u.gtkId) && typeof renderJadwalPengawasIndividu === 'function') {
+        renderJadwalPengawasIndividu();
+      }
+      if (Array.from(pSel.options).some(o => o.value === u.gtkId)) {
+        pSel.value = u.gtkId;
+      }
+      pSel.disabled = true;
+      pSel.title = 'Terkunci pada akun Pengawas Ujian aktif';
+    }
+    if (typeof syncPengawasSectionVisibility === 'function') {
+      syncPengawasSectionVisibility();
+    }
+  } else {
+    const pSel = document.getElementById('pengawasIndividuSelect');
+    if (pSel) {
+      pSel.disabled = false;
+      pSel.title = '';
+    }
   }
 
   const chipEl = document.getElementById('activeUserChip');
