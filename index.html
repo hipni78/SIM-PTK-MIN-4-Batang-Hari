@@ -201,7 +201,7 @@
   }
   .app-sidebar.collapsed { width: 76px; }
   body.pengawas-mode .app-sidebar {
-    width: 196px;
+    width: 248px;
   }
   body.pengawas-mode .app-sidebar .sidebar-brand {
     padding: 12px 10px;
@@ -236,8 +236,8 @@
   }
   @media (max-width: 991px) {
     body.pengawas-mode .app-sidebar {
-      width: 176px !important;
-      max-width: 176px !important;
+      width: 244px !important;
+      max-width: 244px !important;
     }
     body.pengawas-mode .app-sidebar .nav-btn {
       padding: 8px 9px !important;
@@ -1370,13 +1370,20 @@
                 </div>
               </div>
               <div id="jadwalPengawasIndividuSummary" style="margin-bottom:10px;"></div>
-              <div class="table-wrap" id="jadwalPengawasIndividuWrap"></div>
-              <div id="pengawasAbsensiDirectBox" style="margin-top:12px;padding:10px 12px;background:#fff;border:1px solid var(--border-soft);border-radius:12px;">
-                <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-                  <div style="font-weight:800;color:var(--emerald-900);font-size:0.84rem;">✅ Absensi Pengawas Ujian (Pilihan Hadir, TTD Digital & Ambil Gambar)</div>
-                  <button type="button" class="btn btn-primary btn-sm" onclick="quickPrintAsesmenDoc('daftar_hadir_pengawas')">📋 Buka Lembar Daftar Hadir Lengkap</button>
+              <div id="pengawasSecJadwal" class="pengawas-subsec">
+                <div class="table-wrap" id="jadwalPengawasIndividuWrap"></div>
+              </div>
+              <div id="pengawasSecRuangSiswa" class="pengawas-subsec" style="margin-top:12px;">
+                <div id="pengawasRuangSiswaContainer"></div>
+              </div>
+              <div id="pengawasSecAbsensi" class="pengawas-subsec" style="margin-top:12px;">
+                <div id="pengawasAbsensiDirectBox" style="padding:10px 12px;background:#fff;border:1px solid var(--border-soft);border-radius:12px;">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                    <div style="font-weight:800;color:var(--emerald-900);font-size:0.84rem;">✅ Absensi Pengawas Ujian (Pilihan Hadir, TTD Digital & Ambil Gambar)</div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="quickPrintAsesmenDoc('daftar_hadir_pengawas')">📋 Buka Lembar Daftar Hadir Lengkap</button>
+                  </div>
+                  <div id="pengawasAbsensiDirectList" style="font-size:0.78rem;"></div>
                 </div>
-                <div id="pengawasAbsensiDirectList" style="font-size:0.78rem;"></div>
               </div>
             </div>
             <div class="table-wrap" id="asesmenPengawasGabunganWrap" style="margin-bottom:14px;"></div>
@@ -5956,12 +5963,9 @@ window.renderJadwalPengawasIndividu = function() {
       `).join('')}
     </div>
   `;
-  wrap.insertAdjacentHTML('afterend', siswaPanelHtml);
-  const prevPanels = wrap.parentNode ? wrap.parentNode.querySelectorAll('#pengawasRuangSiswaPanel') : [];
-  if (prevPanels.length > 1) {
-    for (let k = 0; k < prevPanels.length - 1; k++) {
-      prevPanels[k].remove();
-    }
+  const ruangSiswaContainer = document.getElementById('pengawasRuangSiswaContainer');
+  if (ruangSiswaContainer) {
+    ruangSiswaContainer.innerHTML = siswaPanelHtml.replace('style="margin-top:12px;', 'style="margin-top:0;');
   }
 
   const directBox = document.getElementById('pengawasAbsensiDirectList');
@@ -8277,6 +8281,45 @@ function guardAdminOnly(actionLabel) {
   return false;
 }
 
+window.switchPengawasSidebarSection = function(secKey, keepSidebarOpen) {
+  window._activePengawasSec = secKey || 'jadwal';
+  if (typeof switchTab === 'function') switchTab('tab-asesmen');
+  if (typeof switchAsesmenSub === 'function') switchAsesmenSub('asub-jadwal-pengawas');
+  if (typeof renderJadwalPengawasIndividu === 'function') safeCall(renderJadwalPengawasIndividu);
+
+  document.querySelectorAll('.pengawas-menu-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-psec') === window._activePengawasSec);
+  });
+
+  const secJadwal = document.getElementById('pengawasSecJadwal');
+  const secRuang = document.getElementById('pengawasSecRuangSiswa');
+  const secAbsen = document.getElementById('pengawasSecAbsensi');
+
+  if (secJadwal) secJadwal.style.display = (window._activePengawasSec === 'jadwal') ? 'block' : 'none';
+  if (secRuang) {
+    secRuang.style.display = (window._activePengawasSec === 'ruang_siswa') ? 'block' : 'none';
+    if (window._activePengawasSec === 'ruang_siswa') {
+      secRuang.querySelectorAll('details').forEach(dt => { dt.open = true; });
+    }
+  }
+  if (secAbsen) secAbsen.style.display = (window._activePengawasSec === 'absensi') ? 'block' : 'none';
+
+  const titleEl = document.getElementById('activePageTitle');
+  if (titleEl) {
+    if (window._activePengawasSec === 'ruang_siswa') {
+      titleEl.textContent = 'Ruang, Kelas & Daftar Siswa Yang Diawasi';
+    } else if (window._activePengawasSec === 'absensi') {
+      titleEl.textContent = 'Absensi Pengawas Ujian (Pilihan Hadir, TTD Digital & Ambil Gambar)';
+    } else {
+      titleEl.textContent = 'Jadwal Mengawas Per Pengawas Ujian';
+    }
+  }
+
+  if (!keepSidebarOpen && window.innerWidth <= 991 && typeof toggleMobileSidebar === 'function') {
+    toggleMobileSidebar(false);
+  }
+};
+
 function applyRolePermissions() {
   const admin = isAdminUser();
   document.querySelectorAll('.admin-only').forEach(el => {
@@ -8349,15 +8392,9 @@ function applyRolePermissions() {
       lbl.style.display = isPengawasMode ? 'none' : '';
     });
     navBar.querySelectorAll('.nav-btn').forEach(btn => {
-      const t = btn.getAttribute('data-tab');
+      if (btn.closest('#pengawasSidebarQuickBtns')) return;
       if (isPengawasMode) {
-        const allowPengawasTab = (t === 'tab-asesmen');
-        btn.style.display = allowPengawasTab ? '' : 'none';
-        btn.classList.toggle('active', allowPengawasTab);
-        const lblSpan = btn.querySelector('.nav-label');
-        if (allowPengawasTab && lblSpan) {
-          lblSpan.textContent = 'Jadwal & Absensi';
-        }
+        btn.style.display = 'none';
       } else {
         btn.style.display = '';
         const lblSpan = btn.querySelector('.nav-label');
@@ -8367,28 +8404,50 @@ function applyRolePermissions() {
       }
     });
 
-    // Tambahkan pintasan ringkas khusus Pengawas (Cetak & Keluar) agar sidebar kiri tetap ringkas & fungsional
+    // Menu Sidebar Kiri Khusus Pengawas Ujian (3 Menu Utama + Pintasan Cetak & Keluar)
     let pengawasQuickGroup = document.getElementById('pengawasSidebarQuickBtns');
     if (isPengawasMode) {
       if (!pengawasQuickGroup) {
         pengawasQuickGroup = document.createElement('div');
         pengawasQuickGroup.id = 'pengawasSidebarQuickBtns';
-        pengawasQuickGroup.style.cssText = 'display:flex;flex-direction:column;gap:5px;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.12);';
+        pengawasQuickGroup.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
         pengawasQuickGroup.innerHTML = `
-          <button type="button" class="nav-btn" onclick="if(typeof printJadwalPengawasIndividu==='function') printJadwalPengawasIndividu(); if(typeof toggleMobileSidebar==='function') toggleMobileSidebar(false);">
-            <span class="nav-icon">🖨️</span>
-            <span class="nav-label">Cetak Jadwal</span>
+          <div style="font-size:0.64rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(253,230,138,0.78);padding:4px 10px 2px;">Menu Pengawas Ujian</div>
+          <button type="button" class="nav-btn pengawas-menu-btn active" data-psec="jadwal" onclick="switchPengawasSidebarSection('jadwal')" style="white-space:normal;line-height:1.25;align-items:flex-start;">
+            <span class="nav-icon" style="margin-top:1px;">📅</span>
+            <span class="nav-label">1. Jadwal Mengawas Per Pengawas Ujian</span>
           </button>
-          <button type="button" class="nav-btn" style="color:#fecaca;" onclick="if(typeof handleLogout==='function') handleLogout();">
-            <span class="nav-icon">🚪</span>
-            <span class="nav-label">Keluar Akun</span>
+          <button type="button" class="nav-btn pengawas-menu-btn" data-psec="ruang_siswa" onclick="switchPengawasSidebarSection('ruang_siswa')" style="white-space:normal;line-height:1.25;align-items:flex-start;">
+            <span class="nav-icon" style="margin-top:1px;">🏫</span>
+            <span class="nav-label">2. Ruang, Kelas & Daftar Siswa Yang Diawasi</span>
           </button>
+          <button type="button" class="nav-btn pengawas-menu-btn" data-psec="absensi" onclick="switchPengawasSidebarSection('absensi')" style="white-space:normal;line-height:1.25;align-items:flex-start;">
+            <span class="nav-icon" style="margin-top:1px;">✅</span>
+            <span class="nav-label">3. Absensi Pengawas Ujian (Hadir, TTD & Foto)</span>
+          </button>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;gap:5px;">
+            <button type="button" class="nav-btn" onclick="if(typeof printJadwalPengawasIndividu==='function') printJadwalPengawasIndividu(); if(typeof toggleMobileSidebar==='function') toggleMobileSidebar(false);">
+              <span class="nav-icon">🖨️</span>
+              <span class="nav-label">Cetak Jadwal Pengawas</span>
+            </button>
+            <button type="button" class="nav-btn" style="color:#fecaca;" onclick="if(typeof handleLogout==='function') handleLogout();">
+              <span class="nav-icon">🚪</span>
+              <span class="nav-label">Keluar Akun</span>
+            </button>
+          </div>
         `;
         navBar.appendChild(pengawasQuickGroup);
       }
       pengawasQuickGroup.style.display = 'flex';
+      if (typeof switchPengawasSidebarSection === 'function') {
+        switchPengawasSidebarSection(window._activePengawasSec || 'jadwal', true);
+      }
     } else if (pengawasQuickGroup) {
       pengawasQuickGroup.style.display = 'none';
+      ['pengawasSecJadwal', 'pengawasSecRuangSiswa', 'pengawasSecAbsensi'].forEach(sid => {
+        const el = document.getElementById(sid);
+        if (el) el.style.display = '';
+      });
     }
   }
 
