@@ -2367,13 +2367,18 @@ function initApp() {
   document.querySelectorAll('.admin-only').forEach(el => { el.style.display = isAdmin ? '' : 'none'; });
   safeCall(renderAll);
   if (user && user.role === 'Pengawas Ujian') {
+    window._activePengawasSec = 'jadwal';
     if (typeof switchAsesmenSub === 'function') switchAsesmenSub('asub-jadwal-pengawas');
     if (typeof renderJadwalPengawasIndividu === 'function') safeCall(renderJadwalPengawasIndividu);
+    if (typeof switchPengawasSidebarSection === 'function') switchPengawasSidebarSection('jadwal', true);
     if (window.innerWidth <= 991 && typeof window.toggleMobileSidebar === 'function') {
       setTimeout(() => { window.toggleMobileSidebar(true); }, 120);
     }
   }
   if (typeof applyRolePermissions === 'function') safeCall(applyRolePermissions);
+  if (user && user.role === 'Pengawas Ujian' && typeof switchPengawasSidebarSection === 'function') {
+    switchPengawasSidebarSection(window._activePengawasSec || 'jadwal', true);
+  }
 }
 window.loginSuccess = loginSuccess;
 
@@ -8295,14 +8300,14 @@ window.switchPengawasSidebarSection = function(secKey, keepSidebarOpen) {
   const secRuang = document.getElementById('pengawasSecRuangSiswa');
   const secAbsen = document.getElementById('pengawasSecAbsensi');
 
-  if (secJadwal) secJadwal.style.display = (window._activePengawasSec === 'jadwal') ? 'block' : 'none';
+  if (secJadwal) secJadwal.style.setProperty('display', (window._activePengawasSec === 'jadwal') ? 'block' : 'none', 'important');
   if (secRuang) {
-    secRuang.style.display = (window._activePengawasSec === 'ruang_siswa') ? 'block' : 'none';
+    secRuang.style.setProperty('display', (window._activePengawasSec === 'ruang_siswa') ? 'block' : 'none', 'important');
     if (window._activePengawasSec === 'ruang_siswa') {
       secRuang.querySelectorAll('details').forEach(dt => { dt.open = true; });
     }
   }
-  if (secAbsen) secAbsen.style.display = (window._activePengawasSec === 'absensi') ? 'block' : 'none';
+  if (secAbsen) secAbsen.style.setProperty('display', (window._activePengawasSec === 'absensi') ? 'block' : 'none', 'important');
 
   const titleEl = document.getElementById('activePageTitle');
   if (titleEl) {
