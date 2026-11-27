@@ -8438,7 +8438,7 @@ function applyRolePermissions() {
         `;
         navBar.appendChild(pengawasQuickGroup);
       }
-      pengawasQuickGroup.style.display = 'flex';
+      pengawasQuickGroup.style.setProperty('display', 'flex', 'important');
       if (typeof switchPengawasSidebarSection === 'function') {
         switchPengawasSidebarSection(window._activePengawasSec || 'jadwal', true);
       }
@@ -8494,8 +8494,9 @@ function applyRolePermissions() {
       }
     }
 
-    const titleEl = document.getElementById('activePageTitle');
-    if (titleEl) titleEl.textContent = 'Portal Pengawas Ujian — Jadwal, Ruang, Siswa & Absensi';
+    if (typeof switchPengawasSidebarSection === 'function') {
+      switchPengawasSidebarSection(window._activePengawasSec || 'jadwal', true);
+    }
   } else {
     document.querySelectorAll('#tab-asesmen .sub-panel').forEach(sp => {
       sp.style.display = '';
